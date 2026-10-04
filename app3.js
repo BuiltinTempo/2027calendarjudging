@@ -4,6 +4,23 @@ function judgePayloadFor(roundId){
 async function saveJudge(roundId,payload,finalize=false){
   await rpc('judge_save',{p_token:currentJudgeToken,p_round_id:roundId,p_payload:payload,p_finalize:finalize});
 }
+let judgeSaveChain=Promise.resolve();
+function queueJudgeSave(roundId,payload,finalize=false){
+  const snapshot=JSON.parse(JSON.stringify(payload));
+  judgeSaveChain=judgeSaveChain.catch(()=>{}).then(()=>saveJudge(roundId,snapshot,finalize));
+  return judgeSaveChain;
+}
+function setCardSelected(cardEl,selected){
+  if(!cardEl)return;
+  cardEl.classList.toggle('selected',selected);
+  const heart=cardEl.querySelector('.voteheart');
+  if(heart)heart.textContent=selected?'♥':'♡';
+}
+function setAutosaveStatus(html,saving=false){
+  const status=$('.sticky>div');
+  if(!status)return;
+  status.innerHTML=html+(saving?' <span class="muted">· Saving…</span>':' <span class="muted">· Autosaved</span>');
+}
 
 async function loadJudge(){
   const s=await rpc('judge_load',{p_token:currentJudgeToken});
@@ -48,7 +65,7 @@ async function renderJudge(){
       <div class="sticky"><button class="ghost" id="back">Change Votes</button><button class="primary" id="submit">Submit Final Ballot</button></div>`,'PRIVATE JUDGE PORTAL');
       $('#back').onclick=()=>{ui.review=false;renderJudge()};
       $('#submit').onclick=async()=>{
-        try{await saveJudge(r.id,v,true);ui.review=false;await renderJudge()}catch(e){alert(e.message)}
+        try{await judgeSaveChain;await saveJudge(r.id,v,true);ui.review=false;await renderJudge()}catch(e){alert(e.message)}
       };
       bindZoom();return;
     }
@@ -61,17 +78,23 @@ async function renderJudge(){
       <div class="sticky"><div>${cover&&center?'Both votes selected':'Select one Cover and one Centerfold vote'}</div>
       <button class="primary" id="review" ${cover&&center?'':'disabled'}>Review Ballot</button></div>`;
     $('#root').innerHTML=shell(body,'PRIVATE JUDGE PORTAL');
-    $$('[data-jvote="cover"] .photo').forEach(b=>b.onclick=async()=>{
-      v={...v,cover:b.closest('[data-id]').dataset.id};
-      data.judgeVotes[key]=v;
-      try{await saveJudge(r.id,v,false);await renderJudge()}catch(e){alert(e.message)}
+    $$('[data-jvote="cover"] .photo').forEach(b=>b.onclick=()=>{
+      const id=b.closest('[data-id]').dataset.id;
+      v={...v,cover:id};data.judgeVotes[key]=v;
+      $$('[data-jvote="cover"]').forEach(c=>setCardSelected(c,c.dataset.id===id));
+      const status=$('.sticky>div');if(status)status.textContent=v.cover&&v.centerfold?'Both votes selected':'Select one Cover and one Centerfold vote';
+      const review=$('#review');if(review)review.disabled=!(v.cover&&v.centerfold);
+      queueJudgeSave(r.id,v,false).catch(e=>alert(e.message));
     });
-    $$('[data-jvote="center"] .photo').forEach(b=>b.onclick=async()=>{
-      v={...v,centerfold:b.closest('[data-id]').dataset.id};
-      data.judgeVotes[key]=v;
-      try{await saveJudge(r.id,v,false);await renderJudge()}catch(e){alert(e.message)}
+    $$('[data-jvote="center"] .photo').forEach(b=>b.onclick=()=>{
+      const id=b.closest('[data-id]').dataset.id;
+      v={...v,centerfold:id};data.judgeVotes[key]=v;
+      $$('[data-jvote="center"]').forEach(c=>setCardSelected(c,c.dataset.id===id));
+      const status=$('.sticky>div');if(status)status.textContent=v.cover&&v.centerfold?'Both votes selected':'Select one Cover and one Centerfold vote';
+      const review=$('#review');if(review)review.disabled=!(v.cover&&v.centerfold);
+      queueJudgeSave(r.id,v,false).catch(e=>alert(e.message));
     });
-    $('#review').onclick=()=>{ui.review=true;renderJudge()};
+    $('#review').onclick=async()=>{try{await judgeSaveChain;ui.review=true;renderJudge()}catch(e){alert(e.message)}};
     bindZoom();return;
   }
 
@@ -97,10 +120,10 @@ async function renderJudge(){
         nd[gi]=[...(ng[gi]||[])];delete ng[gi];
         v={...v,groups:ng,drafts:nd};data.judgeVotes[key]=v;
         ui.review=false;ui.group=gi;
-        try{await saveJudge(r.id,v,false);await renderJudge()}catch(e){alert(e.message)}
+        try{await judgeSaveChain;await saveJudge(r.id,v,false);await renderJudge()}catch(e){alert(e.message)}
       });
       $('#finalize').onclick=async()=>{
-        try{await saveJudge(r.id,v,true);ui.review=false;await renderJudge()}catch(e){alert(e.message)}
+        try{await judgeSaveChain;await saveJudge(r.id,v,true);ui.review=false;await renderJudge()}catch(e){alert(e.message)}
       };
       bindZoom();return;
     }
@@ -117,14 +140,17 @@ async function renderJudge(){
       <div class="sticky"><div><b>${draft.length}${flexible?'/8':'/'+votesPer}</b> selected <span class="muted">· Autosaved</span></div>
       <button class="primary" id="saveGroup" ${(!flexible&&draft.length!==votesPer)?'disabled':''}>Save Group & Continue</button></div>`;
     $('#root').innerHTML=shell(body,'PRIVATE JUDGE PORTAL');
-    $$('.card[data-photo] .photo').forEach(b=>b.onclick=async()=>{
+    $$('.card[data-photo] .photo').forEach(b=>b.onclick=()=>{
       const id=b.closest('.card').dataset.photo;
       let cur=[...((v.drafts||{})[gi]||[])];
       if(cur.includes(id))cur=cur.filter(x=>x!==id);
       else if(cur.length<(flexible?8:votesPer))cur.push(id);
       v={...v,groups:{...(v.groups||{})},drafts:{...(v.drafts||{}),[gi]:cur}};
       data.judgeVotes[key]=v;
-      try{await saveJudge(r.id,v,false);await renderJudge()}catch(e){alert(e.message)}
+      setCardSelected(b.closest('.card'),cur.includes(id));
+      setAutosaveStatus(`<b>${cur.length}${flexible?'/8':'/'+votesPer}</b> selected`,true);
+      const saveBtn=$('#saveGroup');if(saveBtn&&!flexible)saveBtn.disabled=cur.length!==votesPer;
+      queueJudgeSave(r.id,v,false).then(()=>setAutosaveStatus(`<b>${cur.length}${flexible?'/8':'/'+votesPer}</b> selected`,false)).catch(e=>alert(e.message));
     });
     $('#saveGroup').onclick=async()=>{
       const cur=[...((v.drafts||{})[gi]||[])];
@@ -135,7 +161,7 @@ async function renderJudge(){
       else{
         let next=gs.findIndex((_,i)=>i>gi&&!ng[i]);if(next<0)next=gs.findIndex((_,i)=>!ng[i]);ui.group=next;
       }
-      try{await saveJudge(r.id,v,false);await renderJudge()}catch(e){alert(e.message)}
+      try{await judgeSaveChain;await saveJudge(r.id,v,false);await renderJudge()}catch(e){alert(e.message)}
     };
     bindZoom();return;
   }
@@ -146,21 +172,24 @@ async function renderJudge(){
     <section class="panel"><div class="reviewgrid">${choices.map(reviewCard).join('')}</div></section>
     <div class="sticky"><button class="ghost" id="back">Change Selections</button><button class="primary" id="finalize">Submit Final Ballot</button></div>`,'PRIVATE JUDGE PORTAL');
     $('#back').onclick=()=>{ui.review=false;renderJudge()};
-    $('#finalize').onclick=async()=>{try{await saveJudge(r.id,v,true);ui.review=false;await renderJudge()}catch(e){alert(e.message)}};
+    $('#finalize').onclick=async()=>{try{await judgeSaveChain;await saveJudge(r.id,v,true);ui.review=false;await renderJudge()}catch(e){alert(e.message)}};
     bindZoom();return;
   }
   $('#root').innerHTML=shell(`<div class="hero"><div><div class="eyebrow">WELCOME ${esc(currentJudge.name.toUpperCase())}</div><h2>${r.name}</h2>
     <p>All 14 are already in the calendar. Choose the 5 strongest candidates for the premium Cover and Centerfold spots.</p></div><div class="pill">${choices.length}/${max}</div></div>
     <div class="gallery">${r.photoIds.map(id=>card(pm()[id],choices.includes(id))).join('')}</div>
-    <div class="sticky"><div><b>${choices.length}/${max}</b> selected</div><button class="primary" id="review" ${choices.length===max?'':'disabled'}>Review Ballot</button></div>`,'PRIVATE JUDGE PORTAL');
-  $$('.card[data-photo] .photo').forEach(b=>b.onclick=async()=>{
+    <div class="sticky"><div><b>${choices.length}/${max}</b> selected <span class="muted">· Autosaved</span></div><button class="primary" id="review" ${choices.length===max?'':'disabled'}>Review Ballot</button></div>`,'PRIVATE JUDGE PORTAL');
+  $$('.card[data-photo] .photo').forEach(b=>b.onclick=()=>{
     const id=b.closest('.card').dataset.photo;
-    let arr=[...choices];
+    let arr=[...(v.choices||[])];
     if(arr.includes(id))arr=arr.filter(x=>x!==id);else if(arr.length<max)arr.push(id);
     v={...v,choices:arr};data.judgeVotes[key]=v;
-    try{await saveJudge(r.id,v,false);await renderJudge()}catch(e){alert(e.message)}
+    setCardSelected(b.closest('.card'),arr.includes(id));
+    setAutosaveStatus(`<b>${arr.length}/${max}</b> selected`,true);
+    const review=$('#review');if(review)review.disabled=arr.length!==max;
+    queueJudgeSave(r.id,v,false).then(()=>setAutosaveStatus(`<b>${arr.length}/${max}</b> selected`,false)).catch(e=>alert(e.message));
   });
-  $('#review').onclick=()=>{ui.review=true;renderJudge()};
+  $('#review').onclick=async()=>{try{await judgeSaveChain;ui.review=true;renderJudge()}catch(e){alert(e.message)}};
   bindZoom();
 }
 
