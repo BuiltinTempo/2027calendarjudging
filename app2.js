@@ -12,6 +12,13 @@ function applyPublicState(s){
   data._centerfoldTotals=s.centerfoldTotals||{};
 }
 
+function setPublicCardSelected(cardEl,selected){
+  if(!cardEl)return;
+  cardEl.classList.toggle('selected',selected);
+  const heart=cardEl.querySelector('.voteheart');
+  if(heart)heart.textContent=selected?'♥':'♡';
+}
+
 async function loadPublic(){
   const [s,v]=await Promise.all([
     rpc('get_public_state'),
@@ -38,10 +45,10 @@ async function renderPublic(){
       <div class="pill">TOP 5 FINALISTS</div>
     </div>
     <div class="milestone"><b>🏆 All 14 Calendar Winners are already secured.</b><div class="muted">This final only decides the two premium prize spots.</div></div>
-    <section class="panel"><h3>Vote for the Cover</h3><div class="gallery">
+    <section class="panel" data-final-cover><h3>Vote for the Cover</h3><div class="gallery">
       ${data.prizeFinalists.map(id=>card(pm()[id],coverPick===id,true)).join('')}
-    </div><div class="notice">${coverPick?`Your Cover vote: Entry #${pm()[coverPick]?.entryNumber}`:'Choose one finalist.'}</div></section>
-    <section class="panel"><h3>Vote for the Centerfold</h3><div class="gallery" id="centerGallery">
+    </div><div class="notice" data-cover-notice>${coverPick?`Your Cover vote: Entry #${pm()[coverPick]?.entryNumber}`:'Choose one finalist.'}</div></section>
+    <section class="panel" data-final-center><h3>Vote for the Centerfold</h3><div class="gallery" id="centerGallery">
       ${data.prizeFinalists.map(id=>{
         const p=pm()[id];
         return `<article class="card calendarwinner ${centerPick===id?'selected':''}" data-center="${id}">
@@ -49,23 +56,43 @@ async function renderPublic(){
           <button type="button" class="zoomopen ghost">View Full Size</button>
         </article>`;
       }).join('')}
-    </div><div class="notice">${centerPick?`Your Centerfold vote: Entry #${pm()[centerPick]?.entryNumber}`:'Choose one finalist.'}</div></section>
+    </div><div class="notice" data-center-notice>${centerPick?`Your Centerfold vote: Entry #${pm()[centerPick]?.entryNumber}`:'Choose one finalist.'}</div></section>
     <section class="panel"><h3>The 14 Calendar Winners</h3><div class="gallery">${winners.map(p=>card(p,false,true)).join('')}</div></section>`;
     $('#root').innerHTML=shell(body,'PUBLIC CALENDAR VOTING');
 
-    $$('section:nth-of-type(1) .card[data-photo] .photo').forEach(b=>b.onclick=async()=>{
-      const id=b.closest('.card').dataset.photo;
+    $$('[data-final-cover] .card[data-photo] .photo').forEach(b=>b.onclick=async()=>{
+      const cardEl=b.closest('.card');
+      const id=cardEl.dataset.photo;
+      const previous=publicVoterState.cover;
+      publicVoterState.cover=id;
+      $$('[data-final-cover] .card[data-photo]').forEach(c=>setPublicCardSelected(c,c.dataset.photo===id));
+      const notice=$('[data-cover-notice]');
+      if(notice)notice.textContent=`Your Cover vote: Entry #${pm()[id]?.entryNumber}`;
       try{
         await rpc('public_set_final_vote',{p_voter_id:publicVoterId,p_scope:'cover',p_photo_id:id});
-        await renderPublic();
-      }catch(e){alert(e.message)}
+      }catch(e){
+        publicVoterState.cover=previous;
+        $$('[data-final-cover] .card[data-photo]').forEach(c=>setPublicCardSelected(c,c.dataset.photo===previous));
+        if(notice)notice.textContent=previous?`Your Cover vote: Entry #${pm()[previous]?.entryNumber}`:'Choose one finalist.';
+        alert(e.message);
+      }
     });
-    $$('[data-center] .photo').forEach(b=>b.onclick=async()=>{
-      const id=b.closest('[data-center]').dataset.center;
+    $$('[data-final-center] [data-center] .photo').forEach(b=>b.onclick=async()=>{
+      const cardEl=b.closest('[data-center]');
+      const id=cardEl.dataset.center;
+      const previous=publicVoterState.centerfold;
+      publicVoterState.centerfold=id;
+      $$('[data-final-center] [data-center]').forEach(c=>setPublicCardSelected(c,c.dataset.center===id));
+      const notice=$('[data-center-notice]');
+      if(notice)notice.textContent=`Your Centerfold vote: Entry #${pm()[id]?.entryNumber}`;
       try{
         await rpc('public_set_final_vote',{p_voter_id:publicVoterId,p_scope:'centerfold',p_photo_id:id});
-        await renderPublic();
-      }catch(e){alert(e.message)}
+      }catch(e){
+        publicVoterState.centerfold=previous;
+        $$('[data-final-center] [data-center]').forEach(c=>setPublicCardSelected(c,c.dataset.center===previous));
+        if(notice)notice.textContent=previous?`Your Centerfold vote: Entry #${pm()[previous]?.entryNumber}`:'Choose one finalist.';
+        alert(e.message);
+      }
     });
     bindZoom();
     return;
@@ -89,11 +116,19 @@ async function renderPublic(){
   $$('[data-pfilter]').forEach(b=>b.onclick=()=>{ui.publicFilter=b.dataset.pfilter;renderPublic()});
   if(data.publicOpen){
     $$('.card:not(.eliminated)[data-photo] .photo').forEach(b=>b.onclick=async()=>{
-      const id=b.closest('.card').dataset.photo;
+      const cardEl=b.closest('.card');
+      const id=cardEl.dataset.photo;
+      const previous=[...(publicVoterState.popularity||[])];
+      const selected=previous.includes(id);
+      publicVoterState.popularity=selected?previous.filter(x=>x!==id):[...previous,id];
+      setPublicCardSelected(cardEl,!selected);
       try{
         await rpc('public_toggle_popularity',{p_voter_id:publicVoterId,p_photo_id:id});
-        await renderPublic();
-      }catch(e){alert(e.message)}
+      }catch(e){
+        publicVoterState.popularity=previous;
+        setPublicCardSelected(cardEl,selected);
+        alert(e.message);
+      }
     });
   }
   bindZoom();
