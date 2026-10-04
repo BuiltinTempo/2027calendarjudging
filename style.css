@@ -66,7 +66,7 @@
 
 @media (max-width: 560px){
   body{background:#090b12}
-  .app{padding:0 10px 112px}
+  .app{padding:0 10px 130px}
   .top{min-height:70px}
   .eyebrow{font-size:9px}
   .top h1{font-size:21px}
@@ -92,9 +92,18 @@
   .lightbox{padding:10px}
   .lightbox img{max-width:98vw;max-height:90vh}
   .lightbox button{top:10px;right:10px}
-  .sticky{font-size:13px;justify-content:space-between}
-  .sticky>div{flex:1 1 100%}
-  .sticky button{flex:1 1 48%}
+  .sticky{left:8px;right:8px;bottom:8px;transform:none;width:auto;max-width:none;border-radius:16px;padding:10px calc(10px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));font-size:12px;gap:8px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;overflow:hidden}
+  .sticky>div{min-width:0;overflow-wrap:anywhere}
+  .sticky button{width:auto;max-width:100%;min-width:0;min-height:42px;padding:10px 12px;white-space:normal;line-height:1.15}
+  .sticky .primary{justify-self:end}
+  .sticky .ghost{justify-self:start}
+}
+
+@media (max-width: 380px){
+  .app{padding-bottom:150px}
+  .sticky{grid-template-columns:1fr}
+  .sticky>div{width:100%}
+  .sticky button{width:100%;justify-self:stretch}
 }
 
 @media (pointer: coarse){
