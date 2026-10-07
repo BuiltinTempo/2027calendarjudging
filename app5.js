@@ -84,7 +84,13 @@ function bindAdmin(){
     let arr=[...(ui.tieChoices[round.id]||[])];
     if(arr.includes(id))arr=arr.filter(x=>x!==id);
     else if(arr.length<plan.needed)arr.push(id);
-    ui.tieChoices[round.id]=arr;renderAdmin();
+    ui.tieChoices[round.id]=arr;
+    c.classList.toggle('selected',arr.includes(id));
+    const adv=$('#advance');
+    if(adv){
+      const allDone=data.judges.every(j=>data.finalized[`${j.id}:${round.id}`]);
+      adv.disabled=!(allDone&&(!plan.hasTie||arr.length===plan.needed));
+    }
   });
   const tog=$('#togglePublic');if(tog)tog.onclick=async()=>{
     try{await rpc('admin_set_public_open',{p_token:currentAdminToken,p_open:!data.publicOpen});await renderAdmin()}catch(e){alert(e.message)}
