@@ -2,22 +2,43 @@
 // Up to 4 semifinal photos can be protected into the Top 14 without changing
 // judge/public vote totals or Top 5 voting.
 
+const advancementPlanCore = advancementPlan;
+advancementPlan = function advancementPlanWithCalendarSaves(round,count){
+  if(round.id!=='r2')return advancementPlanCore(round,count);
+
+  const totals=adminTotals(round);
+  const saves=new Set(data.calendarSaves||[]);
+  const ranked=[...round.photoIds]
+    .filter(id=>!saves.has(id))
+    .sort((a,b)=>(totals[b]||0)-(totals[a]||0)||String(a).localeCompare(String(b)));
+  const voteSlots=Math.max(0,14-saves.size);
+
+  if(voteSlots<=0||voteSlots>=ranked.length){
+    return {rank:ranked,totals,auto:ranked.slice(0,voteSlots),tie:[],needed:0,hasTie:false};
+  }
+  const cutoff=totals[ranked[voteSlots-1]]||0;
+  const above=ranked.filter(id=>(totals[id]||0)>cutoff);
+  const tied=ranked.filter(id=>(totals[id]||0)===cutoff);
+  const needed=voteSlots-above.length;
+  return {rank:ranked,totals,auto:above,tie:tied,needed,hasTie:tied.length>needed&&needed>0};
+};
+
 const renderAdminCore = renderAdmin;
 renderAdmin = async function renderAdminWithCalendarSaves(){
+  if(currentAdminToken){
+    try{
+      const snapshot=await rpc('admin_get',{p_token:currentAdminToken});
+      data.calendarSaves=snapshot?.contest?.calendar_saves||[];
+    }catch(e){
+      console.error('Unable to load calendar saves',e);
+    }
+  }
+
   await renderAdminCore();
   if(!currentAdminToken)return;
 
   const semifinal=data.rounds.find(r=>r.id==='r2');
   if(!semifinal || semifinal.status!=='open')return;
-
-  try{
-    const snapshot=await rpc('admin_get',{p_token:currentAdminToken});
-    data.calendarSaves=snapshot?.contest?.calendar_saves||[];
-  }catch(e){
-    console.error('Unable to load calendar saves',e);
-    return;
-  }
-
   injectCalendarSavePanel(semifinal);
 };
 
@@ -87,7 +108,7 @@ function bindCalendarSaveButtons(){
         p_photo_id:id
       });
       data.calendarSaves=result?.calendar_saves||[];
-      refreshCalendarSavePanel();
+      await renderAdmin();
     }catch(err){
       btn.disabled=false;
       alert(err.message);
