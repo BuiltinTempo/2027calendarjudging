@@ -1,3 +1,28 @@
+function adminBallotCards(ids){
+  const list=(ids||[]).map(id=>pm()[id]).filter(Boolean);
+  return list.length?`<div class="reviewgrid" style="margin-top:10px">${list.map(p=>`<div class="reviewitem"><img src="${p.image}"><div class="row"><b>#${p.entryNumber}</b></div></div>`).join('')}</div>`:`<div class="muted" style="margin-top:8px">No selections saved.</div>`;
+}
+
+function adminJudgeBallot(j,r){
+  const ballot=(data._adminBallots||[]).find(b=>b.judge_id===j.id&&b.round_id===r.id);
+  const payload=ballot?.payload||{};
+  const status=ballot?.finalized?'Finalized':ballot?'In progress':'Not started';
+  let detail='';
+  if(r.type==='batches'){
+    const gs=groups(r),saved=payload.groups||{},drafts=payload.drafts||{};
+    detail=gs.map((g,gi)=>{
+      const ids=saved[gi]||drafts[gi]||[];
+      const tag=saved[gi]?'Saved':drafts[gi]?'Draft':'No vote';
+      return `<div class="reviewgroup"><div><b>Group ${gi+1}</b> <span class="muted">· ${tag} · ${ids.length} selected</span></div>${adminBallotCards(ids)}</div>`;
+    }).join('');
+  }else if(r.type==='peoples'){
+    detail=`<div class="reviewgroup"><b>Cover</b>${adminBallotCards(payload.cover?[payload.cover]:[])}</div><div class="reviewgroup"><b>Centerfold</b>${adminBallotCards(payload.centerfold?[payload.centerfold]:[])}</div>`;
+  }else{
+    detail=adminBallotCards(payload.choices||[]);
+  }
+  return `<details class="panel" style="margin-top:10px"><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:12px;align-items:center"><span><b>${esc(j.name)}</b></span><span class="muted">${status}</span></summary><div style="margin-top:12px">${detail}</div></details>`;
+}
+
 async function renderAdmin(){
   if(!currentAdminToken)return renderAdminLogin();
   $('#root').innerHTML=shell(`<div class="empty"><h2>Loading admin dashboard...</h2></div>`,'ADMIN CONTROL');
@@ -29,6 +54,7 @@ async function renderAdmin(){
   if(ui.tab==='results'){
     const totals=adminTotals(r),rank=[...r.photoIds].sort((a,b)=>(totals[b]||0)-(totals[a]||0)||String(a).localeCompare(String(b)));
     body+=`<section class="panel"><h3>${r.name} — Judge ranking</h3><div class="results">${rank.map(id=>{const p=pm()[id];return`<div class="result"><img src="${p.image}"><div><b>#${p.entryNumber}</b><span>${totals[id]||0} judge votes</span></div></div>`}).join('')}</div></section>`;
+    body+=`<section class="panel"><h3>Individual Judge Ballots</h3><div class="notice">Expand a judge to see exactly which entries they selected in ${r.name}${r.type==='batches'?', broken out group-by-group':''}.</div>${data.judges.map(j=>adminJudgeBallot(j,r)).join('')}</section>`;
     const next=data.rounds[data.rounds.findIndex(x=>x.id===r.id)+1];
     if(next&&r.id!=='r4'){
       const allDone=data.judges.every(j=>data.finalized[`${j.id}:${r.id}`]);
