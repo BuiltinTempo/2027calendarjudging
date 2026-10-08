@@ -33,6 +33,7 @@ async function loadAdmin(){
   data.publicVotes=a.popularity||{};
   data.publicOpen=c.public_open!==false;
   data.calendarWinners=c.calendar_winners||[];
+  data.calendarSaves=c.calendar_saves||[];
   data.prizeFinalists=c.prize_finalists||[];
   data.tieBreaks=c.tie_breaks||{};
   data.peoplesChoice=c.peoples_choice||{open:false};
