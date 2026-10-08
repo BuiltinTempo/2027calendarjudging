@@ -1,4 +1,4 @@
-// Calendar correction hotfix: semifinal replacement rerun + fresh Top 5 vote.
+// Calendar correction hotfix: preserve 13 winners, vote only the vacated #071 spot, then revote Top 5.
 (function(){
   const originalAdvancementPlan = advancementPlan;
   advancementPlan = function(r,count){
@@ -56,15 +56,23 @@
     if(!r)return;
     const input=$('#advanceCount');
     const adv=$('#advance');
+
     if(r.id==='r2r'){
       if(input){input.value='1';input.readOnly=true;}
-      if(adv)adv.textContent='Lock Replacement Calendar Winner & Open Top 5 Revote';
+      if(adv)adv.textContent='Lock Replacement as 14th Calendar Winner';
       const panel=adv?.closest('.panel');
       if(panel){
-        const h=panel.querySelector('h3');if(h)h.textContent='Replacement spot — review & approve';
-        const n=panel.querySelector('.notice');if(n&&data.judges.every(j=>data.finalized[`${j.id}:${r.id}`]))n.textContent='All judges are complete. Approve the winning replacement to restore the Calendar 14 and open a fresh Top 5 vote.';
+        const h=panel.querySelector('h3');if(h)h.textContent='Fill ONLY the vacated #071 calendar spot';
+        const n=panel.querySelector('.notice');
+        if(n)n.textContent=data.judges.every(j=>data.finalized[`${j.id}:${r.id}`])
+          ? 'All judges are complete. Approving this result adds ONE replacement to the 13 locked winners. No other calendar winner changes.'
+          : 'The existing 13 valid calendar winners remain locked. Judges are voting only on the ONE replacement for #071.';
       }
+
+      const rankingHeading=$('.panel h3');
+      if(rankingHeading&&rankingHeading.textContent.includes('Judge ranking')) rankingHeading.textContent='Replacement Spot — Judge Ranking';
     }
+
     if(r.id==='r3r'){
       if(input){input.value='5';input.readOnly=true;}
       if(adv)adv.textContent='Lock New Top 5 & Open People’s Choice';
@@ -81,13 +89,27 @@
     const r=openRound();
     if(!r)return;
     const hero=$('.hero');
+
     if(r.id==='r2r'&&hero){
-      const eyebrow=hero.querySelector('.eyebrow');if(eyebrow)eyebrow.textContent='SEMIFINAL RERUN — REPLACEMENT SPOT';
-      const p=hero.querySelector('p');if(p)p.textContent='Entry #071 was removed for a rule issue. Choose the single strongest eligible car from the original 2–3 vote group to fill the final calendar spot.';
+      const eyebrow=hero.querySelector('.eyebrow');
+      if(eyebrow)eyebrow.textContent='REPLACEMENT VOTE — ONE CALENDAR SPOT';
+      const h2=hero.querySelector('h2');
+      if(h2)h2.textContent='Choose ONE replacement for Entry #071';
+      const p=hero.querySelector('p');
+      if(p)p.textContent='The other 13 Calendar 14 winners are already locked and will NOT be revoted. Entry #071 was disqualified for a rule issue. Select exactly ONE eligible car below to fill only that vacated 14th calendar spot.';
+      const pill=hero.querySelector('.pill');
+      if(pill)pill.textContent='1 REPLACEMENT';
+
+      const sticky=$('.sticky');
+      if(sticky){
+        const review=sticky.querySelector('#review');
+        if(review)review.textContent='Review Replacement Vote';
+      }
     }
+
     if(r.id==='r3r'&&hero){
       const eyebrow=hero.querySelector('.eyebrow');if(eyebrow)eyebrow.textContent='TOP 5 REVOTE — CORRECTED CALENDAR 14';
-      const p=hero.querySelector('p');if(p)p.textContent='The calendar lineup has been corrected. Choose the 5 strongest candidates for the Cover and Centerfold finalist group.';
+      const p=hero.querySelector('p');if(p)p.textContent='The corrected Calendar 14 is now complete. Choose the 5 strongest candidates for the Cover and Centerfold finalist group.';
     }
   };
 })();
