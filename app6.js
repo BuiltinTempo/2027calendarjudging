@@ -27,4 +27,6 @@ async function route(){
   currentAdminToken=sessionStorage.getItem('calendar-admin-token');
   return renderAdmin();
 }
-route();
+
+// Wait until every correction/override script has loaded before rendering.
+window.addEventListener('DOMContentLoaded',()=>{route()},{once:true});
