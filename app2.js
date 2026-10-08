@@ -28,9 +28,11 @@ async function loadPublic(){
   publicVoterState=v||{popularity:[],cover:null,centerfold:null};
 }
 
-async function renderPublic(){
-  $('#root').innerHTML=shell(`<div class="empty"><h2>Loading voting...</h2></div>`,'PUBLIC CALENDAR VOTING');
-  try{await loadPublic()}catch(e){return showError(e)}
+async function renderPublic(skipLoad=false){
+  if(!skipLoad){
+    $('#root').innerHTML=shell(`<div class="empty"><h2>Loading voting...</h2></div>`,'PUBLIC CALENDAR VOTING');
+    try{await loadPublic()}catch(e){return showError(e)}
+  }
   const winners=data.calendarWinners.map(id=>pm()[id]).filter(Boolean);
   const active=data.photos.filter(p=>p.active);
   const eliminated=data.photos.filter(p=>!p.active&&!data.calendarWinners.includes(p.id));
@@ -113,7 +115,7 @@ async function renderPublic(){
     <button data-pfilter="eliminated" class="${ui.publicFilter==='eliminated'?'active':''}">Eliminated (${eliminated.length})</button>
   </div><div class="gallery">${visible.map(p=>card(p,voted.includes(p.id),true)).join('')}</div>`;
   $('#root').innerHTML=shell(body,'PUBLIC CALENDAR VOTING');
-  $$('[data-pfilter]').forEach(b=>b.onclick=()=>{ui.publicFilter=b.dataset.pfilter;renderPublic()});
+  $$('[data-pfilter]').forEach(b=>b.onclick=()=>{ui.publicFilter=b.dataset.pfilter;renderPublic(true)});
   if(data.publicOpen){
     $$('.card:not(.eliminated)[data-photo] .photo').forEach(b=>b.onclick=async()=>{
       const cardEl=b.closest('.card');
