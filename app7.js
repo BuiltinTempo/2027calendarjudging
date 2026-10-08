@@ -25,15 +25,8 @@ advancementPlan = function advancementPlanWithCalendarSaves(round,count){
 
 const renderAdminCore = renderAdmin;
 renderAdmin = async function renderAdminWithCalendarSaves(){
-  if(currentAdminToken){
-    try{
-      const snapshot=await rpc('admin_get',{p_token:currentAdminToken});
-      data.calendarSaves=snapshot?.contest?.calendar_saves||[];
-    }catch(e){
-      console.error('Unable to load calendar saves',e);
-    }
-  }
-
+  // Calendar saves now come from the same admin_get payload used by loadAdmin().
+  // Do not issue a second admin_get request here.
   await renderAdminCore();
   if(!currentAdminToken)return;
 
