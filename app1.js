@@ -76,7 +76,7 @@ function normalizeRound(r){
   };
 }
 
-function card(p,selected=false,publicMode=false){
+function card(p,selected=false,publicMode=false,voteScope=null){
   const calWinner=data.calendarWinners.includes(p.id);
   const prize=data.prizeFinalists.includes(p.id);
   const eliminated=publicMode && !p.active && !calWinner;
@@ -88,6 +88,7 @@ function card(p,selected=false,publicMode=false){
       ${prize?`<span class="prizebadge">TOP 5 FINALIST</span>`:''}
       ${eliminated?`<span class="outbadge">ELIMINATED</span>`:`<span class="voteheart">${selected?'♥':'♡'}</span>`}
     </button>
+    ${voteScope?finalistVoteTally(voteScope,p.id):''}
     <button type="button" class="zoomopen ghost">View Full Size</button>
   </article>`;
 }
