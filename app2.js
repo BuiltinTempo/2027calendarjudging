@@ -30,7 +30,7 @@ function finalistVoteTally(scope,id){
 function paintFinalistVoteTallies(){
   [['[data-final-cover] .card[data-photo]','photo','cover'],
    ['[data-final-center] .card[data-center]','center','centerfold']].forEach(([selector,attribute,scope])=>{
-    $(selector).forEach(el=>{
+    $$(selector).forEach(el=>{
       const markup=finalistVoteTally(scope,el.dataset[attribute]);
       const existing=el.querySelector('.final-vote-tally');
       if(existing)existing.outerHTML=markup;
@@ -91,13 +91,14 @@ async function renderPublic(skipLoad=false){
     <div class="milestone"><b>🏆 All 14 Calendar Winners are already secured.</b><div class="muted">This final only decides the two premium prize spots.</div></div>
     <div class="final-tally-toolbar"><p id="finalistVotesStatus">Current vote count. Each finalized judge ballot and each People’s Choice ballot contributes one vote per prize. Cover and Centerfold totals are separate.</p><button type="button" class="ghost" id="refreshFinalistVotes">Refresh counts</button></div>
     <section class="panel" data-final-cover><h3>Vote for the Cover</h3><div class="gallery">
-      ${data.prizeFinalists.map(id=>card(pm()[id],coverPick===id,true)).join('')}
+      ${data.prizeFinalists.map(id=>card(pm()[id],coverPick===id,true,'cover')).join('')}
     </div><div class="notice" data-cover-notice>${coverPick?`Your Cover vote: Entry #${pm()[coverPick]?.entryNumber}`:'Choose one finalist.'}</div></section>
     <section class="panel" data-final-center><h3>Vote for the Centerfold</h3><div class="gallery" id="centerGallery">
       ${data.prizeFinalists.map(id=>{
         const p=pm()[id];
         return `<article class="card calendarwinner ${centerPick===id?'selected':''}" data-center="${id}">
           <button class="photo"><img src="${p.image}"><span class="entry">Entry #${p.entryNumber}</span><span class="prizebadge">TOP 5 FINALIST</span><span class="voteheart">${centerPick===id?'♥':'♡'}</span></button>
+          ${finalistVoteTally('centerfold',id)}
           <button type="button" class="zoomopen ghost">View Full Size</button>
         </article>`;
       }).join('')}
@@ -107,7 +108,7 @@ async function renderPublic(skipLoad=false){
     paintFinalistVoteTallies();
     $('#refreshFinalistVotes').onclick=()=>refreshFinalistVoteTallies().catch(e=>alert(e.message));
 
-    $('[data-final-cover] .card[data-photo] .photo').forEach(b=>b.onclick=async()=>{
+    $$('[data-final-cover] .card[data-photo] .photo').forEach(b=>b.onclick=async()=>{
       const cardEl=b.closest('.card');
       const id=cardEl.dataset.photo;
       const previous=publicVoterState.cover;
