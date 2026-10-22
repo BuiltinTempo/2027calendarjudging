@@ -110,3 +110,17 @@
   button,.photo,.tiecard{min-height:44px}
   .tabs button,.rounds button,.publicfilters button{padding:12px 14px}
 }
+
+
+/* Public Top 5 finalist vote counters — Cover/Centerfold are separate prizes. */
+.final-tally-toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;border:1px solid #35405b;border-radius:14px;padding:12px 14px;background:#151b2d;margin:14px 0}
+.final-tally-toolbar p{color:#c2c9e2;font-size:13px;line-height:1.5;margin:0}
+.final-tally-toolbar button{flex:0 0 auto}
+.final-vote-tally{padding:13px;border-top:1px solid #333853;background:linear-gradient(135deg,#161b2a,#1c1830);color:#e9e9fc}
+.final-vote-tally-total{display:flex;align-items:baseline;gap:9px;margin-bottom:10px}
+.final-vote-tally-total strong{font-size:26px;font-weight:850;font-variant-numeric:tabular-nums}
+.final-vote-tally-total span{font-size:12px;font-weight:700;color:#d0c5fa}
+.final-vote-tally-breakdown{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px;color:#b9c4e0}
+.final-vote-tally-breakdown b{font-variant-numeric:tabular-nums;color:#fff;font-size:13px;margin-left:3px}
+@media(max-width:700px){.final-tally-toolbar{align-items:stretch;flex-direction:column}.final-tally-toolbar button{align-self:flex-start}}
+@media(max-width:520px){.final-vote-tally{padding:10px 8px}.final-vote-tally-total{gap:5px;flex-wrap:wrap}.final-vote-tally-total strong{font-size:23px}.final-vote-tally-total span{font-size:11px}.final-vote-tally-breakdown{flex-direction:column;gap:4px;font-size:11px}}
