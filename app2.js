@@ -10,6 +10,48 @@ function applyPublicState(s){
   data.peoplesChoice=c.peoples_choice||{open:false};
   data._coverTotals=s.coverTotals||{};
   data._centerfoldTotals=s.centerfoldTotals||{};
+  data._coverJudgeTotals=s.coverJudgeTotals||{};
+  data._centerfoldJudgeTotals=s.centerfoldJudgeTotals||{};
+  data._coverPublicTotals=s.coverPublicTotals||{};
+  data._centerfoldPublicTotals=s.centerfoldPublicTotals||{};
+}
+
+// Count only finalized Top 5 judge ballots. The public total excludes judge votes.
+function finalistVoteTally(scope,id){
+  const judges=Number((scope==='cover'?data._coverJudgeTotals:data._centerfoldJudgeTotals)?.[id]||0);
+  const people=Number((scope==='cover'?data._coverPublicTotals:data._centerfoldPublicTotals)?.[id]||0);
+  const total=judges+people;
+  const prize=scope==='cover'?'Cover':'Centerfold';
+  return `<div class="final-vote-tally" role="status" aria-label="${prize}: ${total} total votes, ${judges} judge votes, ${people} People’s Choice votes">
+    <div class="final-vote-tally-total"><strong>${total}</strong><span>Total ${prize} votes</span></div>
+    <div class="final-vote-tally-breakdown"><span>Judges <b>${judges}</b></span><span>People’s Choice <b>${people}</b></span></div>
+  </div>`;
+}
+function paintFinalistVoteTallies(){
+  [['[data-final-cover] .card[data-photo]','photo','cover'],
+   ['[data-final-center] .card[data-center]','center','centerfold']].forEach(([selector,attribute,scope])=>{
+    $(selector).forEach(el=>{
+      const markup=finalistVoteTally(scope,el.dataset[attribute]);
+      const existing=el.querySelector('.final-vote-tally');
+      if(existing)existing.outerHTML=markup;
+      else el.insertAdjacentHTML('beforeend',markup);
+    });
+  });
+}
+async function refreshFinalistVoteTallies(){
+  const button=$('#refreshFinalistVotes');
+  const status=$('#finalistVotesStatus');
+  if(button){button.disabled=true;button.textContent='Refreshing…';}
+  try{
+    applyPublicState(await rpc('get_public_state'));
+    paintFinalistVoteTallies();
+    if(status)status.textContent='Vote counts refreshed.';
+  }catch(e){
+    if(status)status.textContent='Could not refresh counts. Please try again.';
+    throw e;
+  }finally{
+    if(button){button.disabled=false;button.textContent='Refresh counts';}
+  }
 }
 
 function setPublicCardSelected(cardEl,selected){
@@ -47,6 +89,7 @@ async function renderPublic(skipLoad=false){
       <div class="pill">TOP 5 FINALISTS</div>
     </div>
     <div class="milestone"><b>🏆 All 14 Calendar Winners are already secured.</b><div class="muted">This final only decides the two premium prize spots.</div></div>
+    <div class="final-tally-toolbar"><p id="finalistVotesStatus">Current vote count. Each finalized judge ballot and each People’s Choice ballot contributes one vote per prize. Cover and Centerfold totals are separate.</p><button type="button" class="ghost" id="refreshFinalistVotes">Refresh counts</button></div>
     <section class="panel" data-final-cover><h3>Vote for the Cover</h3><div class="gallery">
       ${data.prizeFinalists.map(id=>card(pm()[id],coverPick===id,true)).join('')}
     </div><div class="notice" data-cover-notice>${coverPick?`Your Cover vote: Entry #${pm()[coverPick]?.entryNumber}`:'Choose one finalist.'}</div></section>
@@ -61,8 +104,10 @@ async function renderPublic(skipLoad=false){
     </div><div class="notice" data-center-notice>${centerPick?`Your Centerfold vote: Entry #${pm()[centerPick]?.entryNumber}`:'Choose one finalist.'}</div></section>
     <section class="panel"><h3>The 14 Calendar Winners</h3><div class="gallery">${winners.map(p=>card(p,false,true)).join('')}</div></section>`;
     $('#root').innerHTML=shell(body,'PUBLIC CALENDAR VOTING');
+    paintFinalistVoteTallies();
+    $('#refreshFinalistVotes').onclick=()=>refreshFinalistVoteTallies().catch(e=>alert(e.message));
 
-    $$('[data-final-cover] .card[data-photo] .photo').forEach(b=>b.onclick=async()=>{
+    $('[data-final-cover] .card[data-photo] .photo').forEach(b=>b.onclick=async()=>{
       const cardEl=b.closest('.card');
       const id=cardEl.dataset.photo;
       const previous=publicVoterState.cover;
@@ -72,6 +117,7 @@ async function renderPublic(skipLoad=false){
       if(notice)notice.textContent=`Your Cover vote: Entry #${pm()[id]?.entryNumber}`;
       try{
         await rpc('public_set_final_vote',{p_voter_id:publicVoterId,p_scope:'cover',p_photo_id:id});
+        refreshFinalistVoteTallies().catch(()=>{});
       }catch(e){
         publicVoterState.cover=previous;
         $$('[data-final-cover] .card[data-photo]').forEach(c=>setPublicCardSelected(c,c.dataset.photo===previous));
@@ -89,6 +135,7 @@ async function renderPublic(skipLoad=false){
       if(notice)notice.textContent=`Your Centerfold vote: Entry #${pm()[id]?.entryNumber}`;
       try{
         await rpc('public_set_final_vote',{p_voter_id:publicVoterId,p_scope:'centerfold',p_photo_id:id});
+        refreshFinalistVoteTallies().catch(()=>{});
       }catch(e){
         publicVoterState.centerfold=previous;
         $$('[data-final-center] [data-center]').forEach(c=>setPublicCardSelected(c,c.dataset.center===previous));
