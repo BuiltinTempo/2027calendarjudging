@@ -22,7 +22,16 @@ async function route(){
     localStorage.setItem('calendar-public-voter',publicVoterId);
   }
   if(u.searchParams.get('public')==='1')return renderPublic();
-  const jt=u.searchParams.get('judge');
+  // Legacy ?judge= links are still supported. Move their token out of
+  // the HTTP request URL immediately; newly shared links use #judge=.
+  const legacyJudgeToken = u.searchParams.get('judge');
+  if(legacyJudgeToken){
+    u.searchParams.delete('judge');
+    u.hash = 'judge=' + encodeURIComponent(legacyJudgeToken);
+    history.replaceState(null, '', u.pathname + u.search + u.hash);
+  }
+  const fragment = new URLSearchParams(u.hash.startsWith('#') ? u.hash.slice(1) : u.hash);
+  const jt = fragment.get('judge');
   if(jt){currentJudgeToken=jt;return renderJudge()}
   currentAdminToken=sessionStorage.getItem('calendar-admin-token');
   return renderAdmin();
