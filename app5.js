@@ -90,7 +90,7 @@ async function renderAdmin(){
     const base=location.origin+location.pathname;
     body+=`<section class="panel"><h3>Share links</h3><div class="links">
       <div class="linkrow"><b>Public</b><code>${esc(base+'?public=1')}</code><button class="ghost" data-copy="${esc(base+'?public=1')}">Copy</button></div>
-      ${data.judges.map(j=>{const u=base+'?judge='+encodeURIComponent(j.token);return`<div class="linkrow"><b>${j.name}</b><code>${esc(u)}</code><button class="ghost" data-copy="${esc(u)}">Copy</button></div>`}).join('')}
+      ${data.judges.map(j=>{const u=base+'#judge='+encodeURIComponent(j.token);return`<div class="linkrow"><b>${j.name}</b><code>${esc(u)}</code><button class="ghost" data-copy="${esc(u)}">Copy</button></div>`}).join('')}
     </div></section>`;
   }
 
