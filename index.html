@@ -19,6 +19,10 @@
   <script src="app7.js?v=20261016-forceadvance"></script>
   <script src="app8.js?v=20261016-forceadvance"></script>
   <script src="app10.js?v=20261016-forceadvance"></script>
-  <script>route();</script>
+  <script>
+    if(new URL(location.href).searchParams.get('public')==='1'){
+      location.replace(new URL('winners.html',location.href).href);
+    }else{route();}
+  </script>
 </body>
 </html>
